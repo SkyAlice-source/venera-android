@@ -40,13 +40,13 @@ jobs:
         run: |
           APP_VERSION=$(grep "version:" pubspec.yaml | cut -d':' -f2 | tr -d ' ')
           mkdir -p result
-          cp build/app/outputs/apk/debug/*.apk result/venera-android-$APP_VERSION.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk result/venera-android-$APP_VERSION.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: venera-android-apk
-          path: result/*.apk
+          path: result/venera-android-*.apk
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
