@@ -66,14 +66,7 @@ Future<void> init() async {
   FlutterError.onError = (details) {
     Log.error("Unhandled Exception", "${details.exception}\n${details.stack}");
   };
-  if (App.isWindows) {
-    // Report to the monitor thread that the app is running
-    // https://github.com/venera-app/venera/issues/343
-    Timer.periodic(const Duration(seconds: 1), (_) {
-      const methodChannel = MethodChannel('venera/method_channel');
-      methodChannel.invokeMethod("heartBeat");
-    });
-  }
+  // Windows heartBeat — not needed on Android
 }
 
 void _checkOldConfigs() {

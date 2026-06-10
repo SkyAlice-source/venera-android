@@ -36,9 +36,27 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
             "green": "Green".tl,
             "orange": "Orange".tl,
             "blue": "Blue".tl,
+            "yellow": "Yellow".tl,
+            "cyan": "Cyan".tl,
           },
           onChanged: () async {
             await App.init();
+            App.forceRebuild();
+          },
+        ).toSliver(),
+        /// M3 Expressive - Color Scheme Style selector
+        SelectSetting(
+          title: "Scheme Style".tl,
+          settingKey: "schemeStyle",
+          optionTranslation: {
+            "expressive": "Expressive".tl,
+            "tonalSpot": "Tonal Spot".tl,
+            "vibrant": "Vibrant".tl,
+            "monochromatic": "Monochromatic".tl,
+            "neutral": "Neutral".tl,
+            "content": "Content".tl,
+          },
+          onChanged: () async {
             App.forceRebuild();
           },
         ).toSliver(),

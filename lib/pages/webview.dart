@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:desktop_webview_window/desktop_webview_window.dart';
+// DesktopWebview — not available on Android, kept as stub
+// Original: import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -236,8 +237,9 @@ class _AppWebviewState extends State<AppWebview> {
   }
 }
 
+/// Desktop-only webview stub. Not available on Android.
 class DesktopWebview {
-  static Future<bool> isAvailable() => WebviewWindow.isWebviewAvailable();
+  static Future<bool> isAvailable() async => false;
 
   final String initialUrl;
 
@@ -256,117 +258,17 @@ class DesktopWebview {
       this.onStarted,
       this.onClose});
 
-  Webview? _webview;
+  String? get userAgent => null;
 
-  String? _ua;
-
-  String? title;
-
-  void onMessage(String message) {
-    var json = jsonDecode(message);
-    if (json is Map) {
-      if (json["id"] == "document_created") {
-        title = json["data"]["title"];
-        _ua = json["data"]["ua"];
-        onTitleChange?.call(title!, this);
-      }
-    }
+  void open() {
+    // No-op on Android
   }
 
-  String? get userAgent => _ua;
+  Future<String?> evaluateJavascript(String source) async => null;
 
-  Timer? timer;
-
-  void _runTimer() {
-    timer ??= Timer.periodic(const Duration(seconds: 2), (t) async {
-      const js = '''
-        function collect() {
-          if(document.readyState === 'loading') {
-            return '';
-          }
-          let data = {
-            id: "document_created",
-            data: {
-              title: document.title,
-              url: location.href,
-              ua: navigator.userAgent
-            }
-          };
-          return data;
-        }
-        collect();
-      ''';
-      if (_webview != null) {
-        onMessage(await evaluateJavascript(js) ?? '');
-      }
-    });
-  }
-
-  void open() async {
-    _webview = await WebviewWindow.create(
-        configuration: CreateConfiguration(
-      useWindowPositionAndSize: true,
-      userDataFolderWindows: "${App.dataPath}\\webview",
-      title: "webview",
-      proxy: await getProxy(),
-    ));
-    _webview!.addOnWebMessageReceivedCallback(onMessage);
-    _webview!.setOnNavigation((s) {
-      s = s.substring(1, s.length - 1);
-      return onNavigation?.call(s, this);
-    });
-    _webview!.launch(initialUrl, triggerOnUrlRequestEvent: false);
-    _runTimer();
-    _webview!.onClose.then((value) {
-      _webview = null;
-      timer?.cancel();
-      timer = null;
-      onClose?.call();
-    });
-    Future.delayed(const Duration(milliseconds: 200), () {
-      onStarted?.call(this);
-    });
-  }
-
-  Future<String?> evaluateJavascript(String source) {
-    return _webview!.evaluateJavaScript(source);
-  }
-
-  Future<Map<String, String>> getCookies(String url) async {
-    var allCookies = await _webview!.getAllCookies();
-    var res = <String, String>{};
-    for (var c in allCookies) {
-      if (_cookieMatch(url, c.domain)) {
-        res[_removeCode0(c.name)] = _removeCode0(c.value);
-      }
-    }
-    return res;
-  }
-
-  String _removeCode0(String s) {
-    var codeUints = List<int>.from(s.codeUnits);
-    codeUints.removeWhere((e) => e == 0);
-    return String.fromCharCodes(codeUints);
-  }
-
-  bool _cookieMatch(String url, String domain) {
-    domain = _removeCode0(domain);
-    var host = Uri.parse(url).host;
-    var acceptedHost = _getAcceptedDomains(host);
-    return acceptedHost.contains(domain.removeAllBlank);
-  }
-
-  List<String> _getAcceptedDomains(String host) {
-    var acceptedDomains = <String>[host];
-    var hostParts = host.split(".");
-    for (var i = 0; i < hostParts.length - 1; i++) {
-      acceptedDomains.add(".${hostParts.sublist(i).join(".")}");
-    }
-    return acceptedDomains;
-  }
+  Future<Map<String, String>> getCookies(String url) async => {};
 
   void close() {
-    _webview?.close();
-    _webview = null;
+    // No-op on Android
   }
 }

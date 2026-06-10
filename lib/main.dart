@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 import 'package:flutter/material.dart';
@@ -9,48 +8,70 @@ import 'package:venera/foundation/log.dart';
 import 'package:venera/pages/auth_page.dart';
 import 'package:venera/pages/main_page.dart';
 import 'package:venera/utils/io.dart';
-import 'package:window_manager/window_manager.dart';
 import 'components/components.dart';
-import 'components/window_frame.dart';
 import 'foundation/app.dart';
 import 'foundation/appdata.dart';
 import 'headless.dart';
 import 'init.dart';
+
+/// Available M3 color scheme styles.
+enum M3SchemeStyle {
+  tonalSpot,
+  vibrant,
+  expressive,
+  monochromatic,
+  neutral,
+  content;
+
+  String get displayName {
+    return switch (this) {
+      M3SchemeStyle.tonalSpot => 'Tonal Spot',
+      M3SchemeStyle.vibrant => 'Vibrant',
+      M3SchemeStyle.expressive => 'Expressive',
+      M3SchemeStyle.monochromatic => 'Monochromatic',
+      M3SchemeStyle.neutral => 'Neutral',
+      M3SchemeStyle.content => 'Content',
+    };
+  }
+
+  /// Map to FlexTones builder for the given brightness.
+  FlexTones tones(Brightness brightness) {
+    return switch (this) {
+      /// Default Material 3 Tonal Spot scheme.
+      M3SchemeStyle.tonalSpot => FlexTones.material(brightness),
+      /// Vivid with background adjustments — closest to original Venera theme.
+      M3SchemeStyle.vibrant => FlexTones.vividBackground(brightness),
+      /// Fully vivid — uses max chroma from all key colors. Most expressive.
+      M3SchemeStyle.expressive => FlexTones.vivid(brightness),
+      /// Single hue scheme — looks monochromatic using one seed color.
+      M3SchemeStyle.monochromatic => FlexTones.oneHue(brightness),
+      /// Muted material tones for a neutral look.
+      M3SchemeStyle.neutral => FlexTones.soft(brightness),
+      /// Vivid surfaces for content-rich UI.
+      M3SchemeStyle.content => FlexTones.vividSurfaces(brightness),
+    };
+  }
+}
+
+/// Translate setting key to M3SchemeStyle.
+M3SchemeStyle schemeFromSettings() {
+  final val = appdata.settings['schemeStyle'] as String? ?? 'expressive';
+  return M3SchemeStyle.values.firstWhere(
+    (e) => e.name == val,
+    orElse: () => M3SchemeStyle.expressive,
+  );
+}
 
 void main(List<String> args) {
   if (args.contains('--headless')) {
     runHeadlessMode(args);
     return;
   }
-  if (runWebViewTitleBarWidget(args)) return;
   overrideIO(() {
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
       await init();
       runApp(const MyApp());
-      if (App.isDesktop) {
-        await windowManager.ensureInitialized();
-        windowManager.waitUntilReadyToShow().then((_) async {
-          await windowManager.setTitleBarStyle(
-            TitleBarStyle.hidden,
-            windowButtonVisibility: App.isMacOS,
-          );
-          if (App.isLinux) {
-            await windowManager.setBackgroundColor(Colors.transparent);
-          }
-          await windowManager.setMinimumSize(const Size(500, 600));
-          var placement = await WindowPlacement.loadFromFile();
-          if (App.isLinux) {
-            await windowManager.show();
-            await placement.applyToWindow();
-          } else {
-            await placement.applyToWindow();
-            await windowManager.show();
-          }
-
-          WindowPlacement.loop();
-        });
-      }
     }, (error, stack) {
       Log.error("Unhandled Exception", error, stack);
     });
@@ -80,7 +101,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!App.isMobile || !appdata.settings['authorizationRequired']) {
+    if (!appdata.settings['authorizationRequired']) {
       return;
     }
     if (state == AppLifecycleState.inactive && hideContentOverlay == null) {
@@ -147,31 +168,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     Color? tertiary,
     Brightness brightness,
   ) {
-    String? font;
-    List<String>? fallback;
-    if (App.isLinux || App.isWindows) {
-      font = 'Noto Sans CJK';
-      fallback = [
-        'Segoe UI',
-        'Noto Sans SC',
-        'Noto Sans TC',
-        'Noto Sans',
-        'Microsoft YaHei',
-        'PingFang SC',
-        'Arial',
-        'sans-serif'
-      ];
-    }
+    final scheme = schemeFromSettings();
     return ThemeData(
+      useMaterial3: true,
       colorScheme: SeedColorScheme.fromSeeds(
         primaryKey: primary,
         secondaryKey: secondary,
         tertiaryKey: tertiary,
         brightness: brightness,
-        tones: FlexTones.vividBackground(brightness),
+        tones: scheme.tones(brightness),
       ),
-      fontFamily: font,
-      fontFamilyFallback: fallback,
     );
   }
 
@@ -243,8 +249,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             );
           };
           if (widget != null) {
-            /// 如果无法检测到状态栏高度设定指定高度
-            /// https://github.com/flutter/flutter/issues/161086
             var isPaddingCheckError =
                 MediaQuery.of(context).viewPadding.top <= 0 ||
                 MediaQuery.of(context).viewPadding.top > 200;
@@ -265,23 +269,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             }
 
             widget = OverlayWidget(widget);
-            if (App.isDesktop) {
-              widget = Shortcuts(
-                shortcuts: {
-                  LogicalKeySet(LogicalKeyboardKey.escape): VoidCallbackIntent(
-                    App.pop,
-                  ),
-                },
-                child: MouseBackDetector(
-                  onTapDown: App.pop,
-                  child: WindowFrame(widget),
-                ),
-              );
-            }
-            return _SystemUiProvider(Material(
-              color: App.isLinux ? Colors.transparent : null,
-              child: widget,
-            ));
+            return _SystemUiProvider(Material(child: widget));
           }
           throw ('widget is null');
         },

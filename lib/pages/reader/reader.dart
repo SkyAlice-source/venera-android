@@ -16,7 +16,6 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:venera/components/components.dart';
 import 'package:venera/components/custom_slider.dart';
 import 'package:venera/components/rich_comment_content.dart';
-import 'package:venera/components/window_frame.dart';
 import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/cache_manager.dart';
@@ -41,7 +40,6 @@ import 'package:venera/utils/io.dart';
 import 'package:venera/utils/tags_translation.dart';
 import 'package:venera/utils/translations.dart';
 import 'package:venera/utils/volume.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
@@ -731,24 +729,12 @@ abstract mixin class _ReaderLocation {
 mixin class _ReaderWindow {
   bool isFullscreen = false;
 
-  late WindowFrameController windowFrame;
-
-  bool _isInit = false;
-
   void initReaderWindow() {
-    if (!App.isDesktop || _isInit) return;
-    windowFrame = WindowFrame.of(App.rootContext);
-    windowFrame.addCloseListener(onWindowClose);
-    _isInit = true;
+    // Desktop only — no-op on Android
   }
 
   void fullscreen() async {
-    if (!App.isDesktop) return;
-    await windowManager.hide();
-    await windowManager.setFullScreen(!isFullscreen);
-    await windowManager.show();
-    isFullscreen = !isFullscreen;
-    WindowFrame.of(App.rootContext).setWindowFrame(!isFullscreen);
+    // Desktop only — no-op on Android
   }
 
   bool onWindowClose() {
@@ -761,8 +747,7 @@ mixin class _ReaderWindow {
   }
 
   void disposeReaderWindow() {
-    if (!App.isDesktop) return;
-    windowFrame.removeCloseListener(onWindowClose);
+    // Desktop only — no-op on Android
   }
 }
 
